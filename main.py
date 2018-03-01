@@ -1,5 +1,7 @@
 from random import *
-import json
+import json,time
+
+from RTSPClient import main
 
 
 def plus(a, b):
@@ -8,6 +10,7 @@ def plus(a, b):
 
 def save_file(name, pwd, age, flag):
     data = {
+        'url': 'rtsp://192.168.2.100:8554/vlc',
         'name': name,
         'pwd': pwd,
         'age': age,
@@ -24,29 +27,17 @@ def load_file():
     f = open("config.json", "r")
     data = json.load(f)
     f.close()
-    print("load "+str(data))
+    # print("load "+str(data))
+    return data['url']
 
 
 if __name__ == '__main__':
-    num = 10
-    while num > 0:
-        num -= 1
-        print("hello world2 {} ".format(randint(1, 10))+str(plus(2, 4)))
-    myList = []
-    myList.append(2)
-    myList.append(0)
-    myList.append(3)
-    myList.append(0)
-    myList.append("tmp")
-    myList.append(True)
-    try:
-        myList.remove(0)
-    except:
-        print("error")
-    finally:
-        print("ok")
-    print(myList)
-    save_file("lala", "admin12345", 25, True)
-    load_file()
 
+    save_file("lala", "admin12345", 25, True)
+    url = load_file()
+    print(url)
+    main(url)
+    while True:
+        print("sleep")
+        time.sleep(1)
 

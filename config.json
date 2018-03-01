@@ -1,1 +1,1 @@
-{"name": "lala", "pwd": "admin12345", "age": 25, "flag": true}
+{"url": "rtsp://192.168.2.100:8554/vlc", "name": "lala", "pwd": "admin12345", "age": 25, "flag": true}
