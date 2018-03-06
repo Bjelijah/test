@@ -6,7 +6,7 @@ import sys, re, socket, threading, time, datetime, traceback
 from optparse import OptionParser
 
 DEFAULT_SERVER_PORT = 1554
-TRANSPORT_TYPE_LIST = []
+TRANSPORT_TYPE_LIST = ["rtp_over_tcp"]
 DEST_IP             = ''
 CLIENT_PORT_RANGE   = '10014-10015'
 NAT_IP_PORT         = ''
@@ -14,7 +14,7 @@ ENABLE_ARQ          = False
 ENABLE_FEC          = False
 
 TRANSPORT_TYPE_MAP  = {
-                        'ts_over_tcp'   :   'MP2T/TCP;%s;interleaved=0-1,',
+                        'ts_over_tcp'   :   'MP2T/TCP;%s;interleaved=0-1',
                         'rtp_over_tcp'  :   'MP2T/RTP/TCP;%s;interleaved=0-1,',
                         'ts_over_udp'   :   'MP2T/UDP;%s;destination=%s;client_port=%s,',
                         'rtp_over_udp'  :   'MP2T/RTP/UDP;%s;destination=%s;client_port=%s,'
@@ -72,6 +72,7 @@ class RTSPClient(threading.Thread):
         try:
             while self.running:
                 msg = self.recv_msg()
+                print("self recv_msg=     "+msg)
                 if msg.startswith('RTSP'):
                     self._process_response(msg)
                 elif msg.startswith('ANNOUNCE'):
@@ -119,6 +120,8 @@ class RTSPClient(threading.Thread):
             while True:
                 if HEADER_END_STR in self._recv_buf: break
                 more = bytes.decode(self._sock.recv(2048))
+                # more = bytes.decode(self._sock.recv(2048), "utf-8")
+                # more = self._sock.recv(2048)
                 if not more: break
                 self._recv_buf += more
         except socket.error as e:
@@ -154,14 +157,16 @@ class RTSPClient(threading.Thread):
             self.location = headers['location']
         if status != 200:
             self.do_teardown()
-        if self._cseq_map[rsp_cseq] == 'DESCRIBE':
+        if self._cseq_map[rsp_cseq] == 'OPTIONS':
+            self.do_describe()
+        elif self._cseq_map[rsp_cseq] == 'DESCRIBE':
             track_id_str = self._parse_track_id(body)
             self.do_setup(track_id_str)
         elif self._cseq_map[rsp_cseq] == 'SETUP':
             print("get SETUP")
             self._session_id = headers['session']
             print("sessid="+self._session_id)
-            self.do_play(CUR_RANGE,CUR_SCALE)
+            self.do_play(CUR_RANGE, CUR_SCALE)
             self.send_heart_beat_msg()
         elif self._cseq_map[rsp_cseq] == 'PLAY':
             self.playing = True
@@ -195,16 +200,17 @@ class RTSPClient(threading.Thread):
                 headers[key.lower()] = val.strip()
         return headers
 
-    def _parse_track_id(self,sdp):
+    def _parse_track_id(self, sdp):
         '''从sdp中解析trackID=2形式的字符串'''
-        m = re.search(r'a=control:(?P<trackid>[\w=\d]+)',sdp,re.S)
+        print("parse track id   sdp=   "+sdp)
+        m = re.search(r'a=control:(?P<trackid>[\w=\d]+)', sdp, re.S)
         return (m and m.group('trackid')) or ''
 
     def _next_seq(self):
         self._cseq += 1
         return self._cseq
 
-    def _sendmsg(self,method,url,headers):
+    def _sendmsg(self, method, url, headers):
         '''发送消息'''
         # msg = '%s %s %s'%(method,url,RTSP_VERSION)
         msg = "{} {} {}".format(method, url, RTSP_VERSION)
@@ -231,13 +237,18 @@ class RTSPClient(threading.Thread):
         ip_type = 'unicast' #if IPAddress(DEST_IP).is_unicast() else 'multicast'
         for t in TRANSPORT_TYPE_LIST:
             if t not in TRANSPORT_TYPE_MAP:
-                PRINT('Error param: %s'%t,RED)
+                PRINT('Error param: %s'.format(t), RED)
                 sys.exit(1)
             if t.endswith('tcp'):
-                transport_str += TRANSPORT_TYPE_MAP[t]%ip_type
+                transport_str += TRANSPORT_TYPE_MAP[t].format(ip_type)
             else:
-                transport_str += TRANSPORT_TYPE_MAP[t]%(ip_type,DEST_IP,CLIENT_PORT_RANGE)
+                transport_str += TRANSPORT_TYPE_MAP[t].format(ip_type, DEST_IP, CLIENT_PORT_RANGE)
         return transport_str
+
+    def do_options(self):
+        print("do option")
+        headers = {}
+        self._sendmsg('OPTIONS', self._orig_url, headers)
 
     def do_describe(self):
         print("do describe")
@@ -250,30 +261,32 @@ class RTSPClient(threading.Thread):
         if NAT_IP_PORT: headers['x-NAT'] = NAT_IP_PORT
         self._sendmsg('DESCRIBE', self._orig_url, headers)
 
-    def do_setup(self,track_id_str=''):
+    def do_setup(self, track_id_str=''):
         print("do setup")
         headers = {}
-        headers['Transport'] = self._get_transport_type()
-        self._sendmsg('SETUP',self._orig_url+'/'+track_id_str,headers)
+        # headers['Transport'] = self._get_transport_type()
+        headers['Transport'] = 'MP2T/RTP/TCP;unicast;interleaved=0-1'
+        track_id_str = 'trackID=5'
+        self._sendmsg('SETUP', self._orig_url+'/'+track_id_str, headers)
 
-    def do_play(self,range='npt=end-',scale=1):
+    def do_play(self, range ='npt=end-', scale=1):
         headers = {}
         headers['Range'] = range
         headers['Scale'] = scale
-        self._sendmsg('PLAY',self._orig_url,headers)
+        self._sendmsg('PLAY', self._orig_url, headers)
 
     def do_pause(self):
-        self._sendmsg('PAUSE',self._orig_url,{})
+        self._sendmsg('PAUSE', self._orig_url, {})
 
     def do_teardown(self):
-        self._sendmsg('TEARDOWN',self._orig_url,{})
+        self._sendmsg('TEARDOWN', self._orig_url, {})
         self.running = False
 
     def do_options(self):
-        self._sendmsg('OPTIONS',self._orig_url,{})
+        self._sendmsg('OPTIONS', self._orig_url, {})
 
     def do_get_parameter(self):
-        self._sendmsg('GET_PARAMETER',self._orig_url,{})
+        self._sendmsg('GET_PARAMETER', self._orig_url, {})
 
     def send_heart_beat_msg(self):
         '''定时发送GET_PARAMETER消息保活'''
@@ -331,7 +344,7 @@ def exec_cmd(rtsp,cmd):
 
 def main(url):
     rtsp = RTSPClient(url)
-    rtsp.do_describe()
+    rtsp.do_options()
     try:
         while rtsp.running or rtsp.location:
             # if rtsp.playing:
@@ -340,7 +353,7 @@ def main(url):
             # 302重定向重新建链
             if not rtsp.running and rtsp.location:
                 rtsp = RTSPClient(rtsp.location)
-                rtsp.do_describe()
+                rtsp.do_options()
             time.sleep(0.5)
     except KeyboardInterrupt:
         rtsp.do_teardown()

@@ -2,6 +2,7 @@ from random import *
 import json,time
 
 from RTSPClient import main
+from FileUtil import file_util_main
 
 
 def plus(a, b):
@@ -10,7 +11,7 @@ def plus(a, b):
 
 def save_file(name, pwd, age, flag):
     data = {
-        'url': 'rtsp://192.168.2.100:8554/vlc',
+        'url': 'rtsp://184.72.239.149/vod/mp4://BigBuckBunny_175k.mov:554',
         'name': name,
         'pwd': pwd,
         'age': age,
@@ -31,13 +32,20 @@ def load_file():
     return data['url']
 
 
+def file_test():
+    file_util_main()
+
+
+
+
 if __name__ == '__main__':
 
     save_file("lala", "admin12345", 25, True)
     url = load_file()
     print(url)
-    main(url)
-    while True:
-        print("sleep")
-        time.sleep(1)
+    file_test()
+    # main(url)
+    # while True:
+    #     print("sleep")
+    #     time.sleep(1)
 
