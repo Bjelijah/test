@@ -2,33 +2,14 @@ import os,struct,time
 
 from threading import Thread
 from ctypes import *
+from HwBean import *
 import types
 MAX_HANDLE_LEN = 6
 
 
-class HwMediaInfo(Structure):
-    _fields_ = [
-        ("media_fourcc", c_uint),
-        ("dvr_version", c_long),
-        ("vdec_code", c_long),
-        ("adec_code", c_long),
-        ("au_bits", c_ubyte),
-        ("au_sample", c_ubyte),
-        ("au_channel", c_ubyte),
-        ("reserve", c_ubyte),
-        ("reserved", 5*c_ubyte)
-    ]
 
 
-class StreamHead(Structure):
 
-    _fields = [
-        ("len", c_long),
-        ("type", c_long),
-        ("time_stamp", c_ulonglong),
-        ("tag", c_long),
-        ("sys_time", c_long)
-    ]
 
 
 class FileUtil:
@@ -41,26 +22,30 @@ class FileUtil:
         self._running = True
         for i in range(MAX_HANDLE_LEN):
             self._handles.append(-1)
-            print("handle = "+str(self._handles[i]))
+            # print("handle = "+str(self._handles[i]))
 
     def run(self):
         f = open(self._filePath, "rb")
         info = f.read(40)
-        mf,dv,vc,ac,ab,a_s,ac,res,r1,r2,r3,r4,r5 = struct.unpack("IlllBBBB5I", info)
-        eof = os.fstat(f.fileno()).st_size
-
-        print("{} {} {} {} {} {} {} {}".format(hex(mf),dv,vc,ac,ab,a_s,ac,res))
+        media_info = HwMediaInfo.from_buf(info)
+        print("{}  {}".format(hex(media_info.media_fourcc),HwMediaInfo.get_size()))
+        # print("{} {} {} {} {} {} {} {}".format(hex(media_info.), dv, vc, ac, ab, a_s, ac, res))
+        # mf,dv,vc,ac,ab,a_s,ac,res,r1,r2,r3,r4,r5 = struct.unpack("IlllBBBB5I", info)
+        # eof = os.fstat(f.fileno()).st_size
+        # print("{} {} {} {} {} {} {} {}".format(hex(mf),dv,vc,ac,ab,a_s,ac,res))
         while self._running:
-            stream_head = f.read(struct.calcsize("2lQ2l"))
-            if(f.tell() == eof | f.tell()+struct.calcsize("2lQ2l")>eof):
+            try:
+                stream_head = f.read(StreamHead.get_size())
+                sh = StreamHead.from_buf(stream_head)
+                # stream_head = f.read(struct.calcsize("2lQ2l"))
+                # sh_len, sh_type, sh_time_stamp, sh_tag, sh_sys_time = struct.unpack("2lQ2l", stream_head)
+                # buf_len = sh_len - struct.calcsize("2lQ2l")
+                buf_len = sh.len - StreamHead.get_size()
+                buf = f.read(buf_len)
+                time.sleep(0.04)
+            except Exception:
                 f.seek(40)
-            # print("len="+str(stream_head))
-            sh_len, sh_type, sh_time_stamp, sh_tag, sh_sys_time = struct.unpack("2lQ2l", stream_head)
-            print("{} {} {} {} {}  ".format(sh_len,sh_type,sh_time_stamp,hex(sh_tag),sh_sys_time))
-            buf_len = sh_len - struct.calcsize("2lQ2l")
-            buf = f.read(buf_len)
-
-            # time.sleep(0.04)
+                continue
         f.close()
 
 

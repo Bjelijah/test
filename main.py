@@ -3,7 +3,7 @@ import json,time
 
 from RTSPClient import main
 from FileUtil import file_util_main
-
+from ProtocolServer import protocol_server_main
 
 def plus(a, b):
     return a + b
@@ -36,6 +36,8 @@ def file_test():
     file_util_main()
 
 
+def server_test():
+    protocol_server_main()
 
 
 if __name__ == '__main__':
@@ -48,4 +50,6 @@ if __name__ == '__main__':
     # while True:
     #     print("sleep")
     #     time.sleep(1)
+    # server_test()
+
 
