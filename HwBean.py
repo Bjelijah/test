@@ -1,6 +1,9 @@
 from MyStructUtil import Structure
 
 
+HW_PROTOCOL_LOGIN = 0xff000001
+
+
 class HwMediaInfo(Structure):
     _fields_ = [
         ('I', 'media_fourcc'),
@@ -22,4 +25,26 @@ class StreamHead(Structure):
         ('Q', 'time_stamp'),
         ('l', 'tag'),
         ('l', 'sys_time')
+    ]
+
+
+class ProtocolHead(Structure):
+    _fields_ = [
+        ('I', 'proType'),
+        ('I', 'proVersion'),
+        ('I', 'dataLen'),
+        ('I', 'proMinVersion'),
+        ('I', 'err'),
+        ('I', 'seq_num'),
+        ('29I', 'reserved')
+    ]
+
+
+class TLogin(Structure):
+    _fields_ = [
+        ('i', 'type'),
+        ('32c', 'logName'),
+        ('32c', 'logPassword'),
+        ('i', 'clientUserID'),
+        ('32i', 'reserved')
     ]

@@ -4,7 +4,7 @@ import json,time
 from RTSPClient import main
 from FileUtil import file_util_main
 from ProtocolServer import protocol_server_main
-
+import array
 def plus(a, b):
     return a + b
 
@@ -45,11 +45,20 @@ if __name__ == '__main__':
     save_file("lala", "admin12345", 25, True)
     url = load_file()
     print(url)
-    file_test()
+    # file_test()
     # main(url)
     # while True:
     #     print("sleep")
     #     time.sleep(1)
-    # server_test()
+    server_test()
 
 
+    # tmp = (b'a', b'd', b'm', b'i', b'n')
+    #
+    # for x in tmp:
+    #     y = bytes.decode(x)
+    #     print("{} {}".format(x, y))
+    # print("{}".format(tmp[0]))
+    # # str(tmp, 'utf-8')
+    # test = b'a', b'b'
+    # print("{}".format(test))
